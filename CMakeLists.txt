@@ -25,3 +25,7 @@ target_link_libraries(test_simple_grasp_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(calibration_data_recorder_node src/calibration_data_recorder.cpp)
+target_link_libraries(calibration_data_recorder_node
+  ${catkin_LIBRARIES}
+)
