@@ -28,6 +28,11 @@ target_link_libraries(simple_grasp_node
   ${catkin_LIBRARIES}
 )
 
+add_executable(oakd_object_detector_node src/oakd_object_detector.cpp)
+target_link_libraries(oakd_object_detector_node
+  ${catkin_LIBRARIES}
+)
+
 add_executable(test_simple_grasp_node src/test_simple_grasp.cpp)
 target_link_libraries(test_simple_grasp_node
   ${catkin_LIBRARIES}
