@@ -43,10 +43,10 @@ class GraspingDemo
             pregrasp_pose.position.x = -0.16277;
             pregrasp_pose.position.y = 0.578169;
             pregrasp_pose.position.z = 0.682127;
-            pregrasp_pose.orientation.x = 0.910841;
-            pregrasp_pose.orientation.y = -0.410504;
-            pregrasp_pose.orientation.z = -0.0428172;
-            pregrasp_pose.orientation.w = 0.00461386;
+            pregrasp_pose.orientation.x = 0.92387953;
+            pregrasp_pose.orientation.y = -0.38268343;
+            pregrasp_pose.orientation.z = 0.0;
+            pregrasp_pose.orientation.w = 0.0;
 
             spinner.start();
 
@@ -144,20 +144,20 @@ void GraspingDemo::try_grasp()
 
     ros::Duration(1.0).sleep();
     // 获取机械臂末端当前位姿
-    currPose = armgroup.getCurrentPose();
+    //currPose = armgroup.getCurrentPose();
     //ROS_INFO("Current pose: x=%f, y=%f, z=%f", currPose.pose.position.x, currPose.pose.position.y, currPose.pose.position.z);
     
     // 获取机械臂末端坐标系到机械臂基座坐标系的变换
     tf::Transform transform_ee_to_base;
-    transform_ee_to_base.setOrigin(tf::Vector3(currPose.pose.position.x, currPose.pose.position.y, currPose.pose.position.z));
-    transform_ee_to_base.setRotation(tf::Quaternion(currPose.pose.orientation.x, currPose.pose.orientation.y, currPose.pose.orientation.z, currPose.pose.orientation.w));
+    transform_ee_to_base.setOrigin(tf::Vector3(observe_pose.position.x, observe_pose.position.y, observe_pose.position.z));
+    transform_ee_to_base.setRotation(tf::Quaternion(observe_pose.orientation.x, observe_pose.orientation.y, observe_pose.orientation.z, observe_pose.orientation.w));
 
     tf::Transform transform_target_pose_base = transform_ee_to_base * transform_camera_to_ee * transform_target_to_camera;
 
     geometry_msgs::Pose target_pose_base_msg;
     tf::poseTFToMsg(transform_target_pose_base, target_pose_base_msg);
 
-    target_pose_base_msg.position.z += 0.19; // 抓取高度(夹爪长度)
+    target_pose_base_msg.position.z += 0.195; // 抓取高度(夹爪长度)
 
     ROS_INFO("Target position in base frame: x=%f, y=%f, z=%f", target_pose_base_msg.position.x, target_pose_base_msg.position.y, target_pose_base_msg.position.z);
 

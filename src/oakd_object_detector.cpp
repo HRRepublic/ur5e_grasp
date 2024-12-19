@@ -145,7 +145,7 @@ public:
             float X, Y, Z;
             std::tie(X, Y, Z) = result.second;
 
-            // ROS_INFO("Detected %s object at (X: %f, Y: %f, Z: %f)", color.c_str(), X, Y, Z);
+            ROS_INFO("Detected %s object at (X: %f, Y: %f, Z: %f)", color.c_str(), X, Y, Z);
         }
     }
 

@@ -15,7 +15,7 @@ int main(int argc, char** argv)
     tf::Transform transform;
 
     // 设置平移
-    transform.setOrigin(tf::Vector3(-77.78174593 / 1000.0, -77.78174593 / 1000.0, 85.0 / 1000.0));
+    transform.setOrigin(tf::Vector3(-70.71067812 / 1000.0, -70.71067812 / 1000.0, 85.0 / 1000.0));
 
     // 角度转换为弧度
     double angle_z = -45.0 * M_PI / 180.0;
