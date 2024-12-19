@@ -6,18 +6,24 @@
 #include <thread>
 #include <atomic>
 #include <iostream>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/Image.h>
+#include <opencv2/opencv.hpp>
 
 // 文件路径
 const std::string FILE_PATH = "/home/shi/catkin_ws/calibration_data.txt";
+const std::string IMAGE_PATH = "/home/shi/catkin_ws/images/";
 
 // 全局变量
 std::atomic<bool> save_pose(false);
 std::atomic<bool> exit_program(false);
-geometry_msgs::PoseStamped aruco_pose;
+geometry_msgs::PoseStamped end_effector_pose;
 std::mutex pose_mutex;
+cv::Mat latest_image;
+std::mutex image_mutex;
 
-// 保存位姿到文件
-void savePoseToFile(const std::string& label, const geometry_msgs::Pose& pose, std::ofstream& file)
+// 保存位姿到文件并输出到终端
+void savePoseToFileAndPrint(const std::string& label, const geometry_msgs::Pose& pose, std::ofstream& file)
 {
     // 转换为 RX, RY, RZ 形式（角度制）
     tf::Quaternion q(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
@@ -30,20 +36,32 @@ void savePoseToFile(const std::string& label, const geometry_msgs::Pose& pose, s
     pitch = pitch * 180.0 / M_PI;
     yaw = yaw * 180.0 / M_PI;
 
+    // 将位置转换为毫米
+    double x_mm = pose.position.x * 1000.0;
+    double y_mm = pose.position.y * 1000.0;
+    double z_mm = pose.position.z * 1000.0;
+
     // 保存到文件
-    file << label << "," << pose.position.x << "," << pose.position.y << "," << pose.position.z << ","
+    file << label << "," << x_mm << "," << y_mm << "," << z_mm << ","
          << roll << "," << pitch << "," << yaw << std::endl;
-    
+
     // 输出到终端
-    ROS_INFO("%s Position: [x: %f, y: %f, z: %f], Orientation (RPY): [roll: %f, pitch: %f, yaw: %f]",
-             label.c_str(), pose.position.x, pose.position.y, pose.position.z, roll, pitch, yaw);
+    ROS_INFO("%s Position: [x: %f mm, y: %f mm, z: %f mm], Orientation (RPY): [roll: %f, pitch: %f, yaw: %f]",
+             label.c_str(), x_mm, y_mm, z_mm, roll, pitch, yaw);
 }
 
-// 回调函数
-void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+// 回调函数：保存最新的图像
+void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-    std::lock_guard<std::mutex> lock(pose_mutex);
-    aruco_pose = *msg;
+    std::lock_guard<std::mutex> lock(image_mutex);
+    try
+    {
+        latest_image = cv_bridge::toCvShare(msg, "bgr8")->image.clone();
+    }
+    catch (cv_bridge::Exception& e)
+    {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+    }
 }
 
 // 键盘输入线程
@@ -73,15 +91,17 @@ int main(int argc, char** argv)
     // 初始化 MoveIt! 接口
     moveit::planning_interface::MoveGroupInterface move_group("manipulator");
 
-    // 订阅 /aruco_tracker/pose 主题
-    ros::Subscriber sub = nh.subscribe<geometry_msgs::PoseStamped>("/aruco_tracker/pose", 10, poseCallback);
+    // 订阅图像话题
+    ros::Subscriber image_sub = nh.subscribe<sensor_msgs::Image>("/stereo_inertial_publisher/color/image", 10, imageCallback);
 
     // 启动键盘输入线程
     std::thread keyboard_thread(keyboardThread);
 
-    // 清空文件内容
     std::ofstream file;
-    file.open(FILE_PATH, std::ios::out | std::ios::trunc);
+    // 打开文件，清空文件内容
+    //file.open(FILE_PATH, std::ios::out | std::ios::trunc);
+    // 打开文件（以追加模式）
+    file.open(FILE_PATH, std::ios::app);
     if (!file.is_open())
     {
         ROS_ERROR("Failed to open file: %s", FILE_PATH.c_str());
@@ -92,6 +112,8 @@ int main(int argc, char** argv)
     // 使用 AsyncSpinner
     ros::AsyncSpinner spinner(1); // 使用一个线程
     spinner.start();
+
+    int image_count = 19;
 
     // 主循环
     while (ros::ok() && !exit_program)
@@ -108,12 +130,18 @@ int main(int argc, char** argv)
                 ROS_ERROR("Failed to open file: %s", FILE_PATH.c_str());
                 continue;
             }
-            // 获取机械臂末端位姿
+
+            // 保存机械臂末端位姿并输出到终端
             geometry_msgs::PoseStamped end_effector_pose = move_group.getCurrentPose();
-            savePoseToFile("hand", end_effector_pose.pose, file);
-            
-            // 保存标定板位姿
-            savePoseToFile("eye", aruco_pose.pose, file);
+            savePoseToFileAndPrint("hand", end_effector_pose.pose, file);
+
+            // 保存图像
+            if (!latest_image.empty())
+            {
+                std::string image_filename = IMAGE_PATH + "image_" + std::to_string(image_count++) + ".png";
+                cv::imwrite(image_filename, latest_image);
+                ROS_INFO("Saved image to %s", image_filename.c_str());
+            }
 
             // 关闭文件
             file.close();
