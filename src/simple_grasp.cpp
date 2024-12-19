@@ -27,7 +27,7 @@ class GraspingDemo
         GraspingDemo(ros::NodeHandle n_) : spinner(1), armgroup("manipulator"), nh(n_)
         {
             // 初始化手眼标定结果
-            transform_camera_to_ee.setOrigin(tf::Vector3(-0.077782, -0.077782, 0.085000));
+            transform_camera_to_ee.setOrigin(tf::Vector3(-0.07071067812, -0.07071067812, 0.085000));
             transform_camera_to_ee.setRotation(tf::Quaternion(-0.176285, 0.073019, -0.375652, 0.906905));
             
             // 初始化观察位姿
