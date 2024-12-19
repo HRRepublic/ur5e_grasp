@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
   tf
+  serial
 ) 
 
 find_package(OpenCV 4 REQUIRED)
@@ -21,9 +22,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
+  INCLUDE_DIRS include
 )
 
-add_executable(simple_grasp_node src/simple_grasp.cpp)
+add_executable(simple_grasp_node src/simple_grasp.cpp src/pgi_control.cpp)
 target_link_libraries(simple_grasp_node
   ${catkin_LIBRARIES}
 )

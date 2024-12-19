@@ -8,6 +8,8 @@
 #include <thread>
 #include <iostream>
 
+#include "pgi140/pgi_control.h"
+
 class GraspingDemo
 {
     private:
@@ -22,9 +24,10 @@ class GraspingDemo
         geometry_msgs::Pose pregrasp_pose;
         geometry_msgs::PoseStamped currPose;
         geometry_msgs::Point target_position_camera;
+        pgi pgi140;
     
     public:
-        GraspingDemo(ros::NodeHandle n_) : spinner(1), armgroup("manipulator"), nh(n_)
+        GraspingDemo(ros::NodeHandle n_) : spinner(1), armgroup("manipulator"), nh(n_), pgi140("/dev/ttyUSB0", 115200)
         {
             // 初始化手眼标定结果
             transform_camera_to_ee.setOrigin(tf::Vector3(-0.07071067812, -0.07071067812, 0.085000));
@@ -52,6 +55,10 @@ class GraspingDemo
 
             // 设置规划器
             armgroup.setPlannerId("RRTstarkConfigDefault");
+
+            // 初始化夹爪，并开启
+            if(!pgi140.isInit())  pgi140.initSingle();
+            pgi140.setall(1000,true);
 
             // 获取机器人模型信息
             joint_model_group = armgroup.getCurrentState()->getJointModelGroup("manipulator");
@@ -132,8 +139,9 @@ void GraspingDemo::try_grasp()
     {
         ROS_WARN("Plan failed!");
     }
+    success = false;
 
-    ros::Duration(3.0).sleep();
+    ros::Duration(2.0).sleep();
 
     geometry_msgs::Pose target_pose_camera;
     target_pose_camera.position = target_position_camera_this;
@@ -163,6 +171,24 @@ void GraspingDemo::try_grasp()
 
     // 机械臂末端移动到相应位置
     attainPosition(target_pose_base_msg.position.x, target_pose_base_msg.position.y, target_pose_base_msg.position.z);
+
+    ros::Duration(2.0).sleep();
+    // 夹爪闭合，抓取
+    pgi140.setall(0,true);
+
+    // 控制机械臂回到准备抓取的位姿
+    armgroup.setPoseTarget(pregrasp_pose);
+    success = (armgroup.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    if (success)
+    {
+        ROS_INFO("Plan successful, executing...");
+        armgroup.move(); // 执行运动
+        ROS_INFO("Sucssefully moved to pregrasp pose!");
+    }
+    else
+    {
+        ROS_WARN("Plan failed!");
+    }
 
 }
 
