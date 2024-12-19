@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <thread>
 
 // 深度获取函数
 float getDepth(const cv::Mat& depth_image, int u, int v) {
@@ -19,7 +20,7 @@ float getDepth(const cv::Mat& depth_image, int u, int v) {
 
 class ObjectDetector {
 public:
-    ObjectDetector() {
+    ObjectDetector() : current_color_("red") {
         // 订阅 RGB 图像和深度图像
         image_sub_ = nh_.subscribe("/stereo_inertial_publisher/color/image", 1, &ObjectDetector::imageCallback, this);
         depth_sub_ = nh_.subscribe("/stereo_inertial_publisher/stereo/depth", 1, &ObjectDetector::depthCallback, this);
@@ -81,7 +82,7 @@ public:
 
         std::map<std::string, std::tuple<float, float, float>> results;
 
-        const std::string color = "blue";
+        const std::string color = current_color_;
         const cv::Scalar& lower = color_ranges_[color].first;
         const cv::Scalar& upper = color_ranges_[color].second;
 
@@ -148,6 +149,15 @@ public:
         }
     }
 
+    void setColor(const std::string& color) {
+        if (color_ranges_.find(color) != color_ranges_.end()) {
+            current_color_ = color;
+            ROS_INFO("Color set to %s", color.c_str());
+        } else {
+            ROS_WARN("Color %s not found in color ranges", color.c_str());
+        }
+    }
+
 private:
     ros::NodeHandle nh_;
     ros::Subscriber image_sub_;
@@ -158,11 +168,27 @@ private:
     cv::Mat depth_image_;
     float fx_, fy_, cx_, cy_;
     std::map<std::string, std::pair<cv::Scalar, cv::Scalar>> color_ranges_;
+    std::string current_color_;
 };
+
+void keyboardListener(ObjectDetector& detector) {
+    char input;
+    while (ros::ok()) {
+        std::cin >> input;
+        if (input == 'r') {
+            detector.setColor("red");
+        } else if (input == 'y') {
+            detector.setColor("yellow");
+        } else if (input == 'b') {
+            detector.setColor("blue");
+        }
+    }
+}
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "oakd_object_detector_node");
     ObjectDetector detector;
+    std::thread keyboard_thread(keyboardListener, std::ref(detector));
     ros::spin();
     return 0;
 }
