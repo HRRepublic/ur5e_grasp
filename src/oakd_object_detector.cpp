@@ -9,10 +9,10 @@
 #include <vector>
 #include <string>
 
-// 假设有深度获取函数
+// 深度获取函数
 float getDepth(const cv::Mat& depth_image, int u, int v) {
     if (u >= 0 && u < depth_image.cols && v >= 0 && v < depth_image.rows) {
-        return depth_image.at<uint16_t>(v, u) / 1000.0; // 假设深度以毫米存储，转换为米
+        return depth_image.at<uint16_t>(v, u) / 1000.0; // 深度以毫米存储，转换为米
     }
     return 0.0;
 }
@@ -26,7 +26,7 @@ public:
         camera_info_sub_ = nh_.subscribe("/stereo_inertial_publisher/color/camera_info", 1, &ObjectDetector::cameraInfoCallback, this);
 
         // 发布检测结果
-        point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("/detected_object_point", 1);
+        point_pub_ = nh_.advertise<geometry_msgs::PointStamped>("/target_position", 1);
 
         // 相机内参（自己标的）
         fx_ = 547.7535765826173;
@@ -36,7 +36,7 @@ public:
 
         // 定义颜色范围（根据需要调整）
         color_ranges_ = {
-            {"red", {cv::Scalar(0, 120, 70), cv::Scalar(10, 255, 255)}},
+            {"red", {cv::Scalar(160, 150, 100), cv::Scalar(180, 255, 255)}},
             {"yellow", {cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255)}},
             {"blue", {cv::Scalar(100, 150, 0), cv::Scalar(140, 255, 255)}}
         };
@@ -114,7 +114,13 @@ public:
                 cv::waitKey(1);
 
                 // 获取深度值
-                float Z = getDepth(depth_image_, u, v);
+                // float Z = getDepth(depth_image_, u, v);
+
+                // 计算深度值
+                float square_size = 0.019; // 正方形边长，单位：米
+                float focal_length = (fx_ + fy_) / 2.0; // 近似焦距
+                float contour_area = cv::contourArea(contour);
+                float Z = (square_size * focal_length) / std::sqrt(contour_area);
                 if (Z > 0) {
                     float X = (u - cx_) * Z / fx_;
                     float Y = (v - cy_) * Z / fy_;
@@ -123,7 +129,7 @@ public:
                     // 发布检测结果
                     geometry_msgs::PointStamped point_msg;
                     point_msg.header.stamp = ros::Time::now();
-                    point_msg.header.frame_id = "oak_rgb_camera_optical_frame";
+                    point_msg.header.frame_id = "camera_link";
                     point_msg.point.x = X;
                     point_msg.point.y = Y;
                     point_msg.point.z = Z;
@@ -138,7 +144,7 @@ public:
             float X, Y, Z;
             std::tie(X, Y, Z) = result.second;
 
-            ROS_INFO("Detected %s object at (X: %f, Y: %f, Z: %f)", color.c_str(), X, Y, Z);
+            // ROS_INFO("Detected %s object at (X: %f, Y: %f, Z: %f)", color.c_str(), X, Y, Z);
         }
     }
 

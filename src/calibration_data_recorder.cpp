@@ -31,12 +31,17 @@ void savePoseToFile(const std::string& label, const geometry_msgs::Pose& pose, s
     yaw = yaw * 180.0 / M_PI;
 
     // 保存到文件
-    file << label << "," << pose.position.x << "," << pose.position.y << "," << pose.position.z << ","
-         << roll << "," << pitch << "," << yaw << std::endl;
+    // file << label << "," << pose.position.x << "," << pose.position.y << "," << pose.position.z << ","
+    //      << roll << "," << pitch << "," << yaw << std::endl;
+
+    // 输出平移加四元数表示的机械臂末端位姿到终端
+    ROS_INFO("%s Position: [x: %f, y: %f, z: %f], Orientation (Quaternion): [x: %f, y: %f, z: %f, w: %f]",
+             label.c_str(), pose.position.x, pose.position.y, pose.position.z,
+             pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
     
     // 输出到终端
-    ROS_INFO("%s Position: [x: %f, y: %f, z: %f], Orientation (RPY): [roll: %f, pitch: %f, yaw: %f]",
-             label.c_str(), pose.position.x, pose.position.y, pose.position.z, roll, pitch, yaw);
+    // ROS_INFO("%s Position: [x: %f, y: %f, z: %f], Orientation (RPY): [roll: %f, pitch: %f, yaw: %f]",
+    //          label.c_str(), pose.position.x, pose.position.y, pose.position.z, roll, pitch, yaw);
 }
 
 // 回调函数

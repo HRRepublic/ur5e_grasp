@@ -19,7 +19,7 @@ int main(int argc, char** argv)
 
     // 角度转换为弧度
     double angle_z = -45.0 * M_PI / 180.0;
-    double angle_x = 22.0 * M_PI / 180.0;
+    double angle_x = -22.0 * M_PI / 180.0;
 
     // 绕 Z 轴旋转 -45 度的旋转矩阵
     Eigen::Matrix3d R_z;
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
            sin(angle_z), cos(angle_z), 0,
            0, 0, 1;
 
-    // 绕当前 X 轴旋转 22 度的旋转矩阵
+    // 绕当前 X 轴旋转 -22 度的旋转矩阵
     Eigen::Matrix3d R_x;
     R_x << 1, 0, 0,
            0, cos(angle_x), -sin(angle_x),
@@ -42,6 +42,10 @@ int main(int argc, char** argv)
     // 设置旋转（四元数）
     tf::Quaternion q(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
     transform.setRotation(q);
+
+    // 输出平移和四元数表示的变换
+    ROS_INFO("Translation: [%f, %f, %f]", transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z());
+    ROS_INFO("Quaternion: [%f, %f, %f, %f]", q.x(), q.y(), q.z(), q.w());
 
     ros::Rate rate(10.0);
     while (ros::ok())
