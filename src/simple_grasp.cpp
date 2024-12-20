@@ -22,6 +22,7 @@ class GraspingDemo
         tf::Transform transform_camera_to_ee;
         geometry_msgs::Pose observe_pose;
         geometry_msgs::Pose pregrasp_pose;
+        geometry_msgs::Pose finished_pose;
         geometry_msgs::PoseStamped currPose;
         geometry_msgs::Point target_position_camera;
         pgi pgi140;
@@ -51,6 +52,15 @@ class GraspingDemo
             pregrasp_pose.orientation.z = 0.0;
             pregrasp_pose.orientation.w = 0.0;
 
+            // 初始化物块放置位置位姿
+            finished_pose.position.x = 0.0160093;
+            finished_pose.position.y = 0.371898;
+            finished_pose.position.z = 0.294234;
+            finished_pose.orientation.x = 0.92387953;
+            finished_pose.orientation.y = -0.38268343;
+            finished_pose.orientation.z = 0.0;
+            finished_pose.orientation.w = 0.0;
+
             spinner.start();
 
             // 设置规划器
@@ -78,7 +88,7 @@ class GraspingDemo
             {
                 ROS_INFO("Plan successful, executing...");
                 armgroup.move(); // 执行运动
-                ROS_INFO("Sucssefully moved to pregrasp pose!");
+                ROS_INFO("Sucssefully moved to observe pose!");
             }
             else
             {
@@ -141,8 +151,6 @@ void GraspingDemo::try_grasp()
     }
     success = false;
 
-    ros::Duration(2.0).sleep();
-
     geometry_msgs::Pose target_pose_camera;
     target_pose_camera.position = target_position_camera_this;
     target_pose_camera.orientation.w = 1.0;
@@ -150,7 +158,6 @@ void GraspingDemo::try_grasp()
     transform_target_to_camera.setOrigin(tf::Vector3(target_pose_camera.position.x, target_pose_camera.position.y, target_pose_camera.position.z));
     transform_target_to_camera.setRotation(tf::Quaternion(target_pose_camera.orientation.x, target_pose_camera.orientation.y, target_pose_camera.orientation.z, target_pose_camera.orientation.w));
 
-    ros::Duration(1.0).sleep();
     // 获取机械臂末端当前位姿
     //currPose = armgroup.getCurrentPose();
     //ROS_INFO("Current pose: x=%f, y=%f, z=%f", currPose.pose.position.x, currPose.pose.position.y, currPose.pose.position.z);
@@ -172,7 +179,6 @@ void GraspingDemo::try_grasp()
     // 机械臂末端移动到相应位置
     attainPosition(target_pose_base_msg.position.x, target_pose_base_msg.position.y, target_pose_base_msg.position.z);
 
-    ros::Duration(2.0).sleep();
     // 夹爪闭合，抓取
     pgi140.setall(0,true);
 
@@ -189,6 +195,41 @@ void GraspingDemo::try_grasp()
     {
         ROS_WARN("Plan failed!");
     }
+
+    // 控制机械臂回到准备抓取的位姿
+    armgroup.setPoseTarget(finished_pose);
+    success = (armgroup.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    if (success)
+    {
+        ROS_INFO("Plan successful, executing...");
+        armgroup.move(); // 执行运动
+        ROS_INFO("Sucssefully moved to finished pose!");
+    }
+    else
+    {
+        ROS_WARN("Plan failed!");
+    }
+
+    // 夹爪张开，放置物块
+    pgi140.setall(1000,true);
+    ROS_INFO("Grasping finished!");
+
+    //控制机械臂运动到观察的位姿
+    armgroup.setPoseTarget(observe_pose);
+    success = (armgroup.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    if (success)
+    {
+        ROS_INFO("Plan successful, executing...");
+        ROS_INFO("Plan successful, executing...");
+        armgroup.move(); // 执行运动
+        ROS_INFO("Sucssefully moved to observe pose!");
+    }
+    else
+    {
+        ROS_WARN("Plan failed!");
+    }
+
+    ROS_INFO("Ready to grasp!");
 
 }
 
